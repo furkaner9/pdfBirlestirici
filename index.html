@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Birleştirici</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px 20px;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.15);
+            transform: scale(1.02);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.1em;
+            margin-top: 10px;
+        }
+
+        .file-list {
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .file-item {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .remove-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+
+        .remove-btn:hover {
+            background: #ff3742;
+            transform: scale(1.1);
+        }
+
+        .merge-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .merge-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .merge-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            display: none;
+            background: rgba(46, 204, 113, 0.1);
+            color: #27ae60;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .error-message {
+            display: none;
+            background: rgba(231, 76, 60, 0.1);
+            color: #e74c3c;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 PDF Birleştirici</h1>
+        
+        <div class="upload-area" onclick="document.getElementById('pdfFiles').click()">
+            <div style="font-size: 3em; margin-bottom: 10px;">📎</div>
+            <div>PDF dosyalarını seçin veya buraya sürükleyin</div>
+            <div class="upload-text">En fazla 2 PDF dosyası seçebilirsiniz</div>
+        </div>
+        
+        <input type="file" id="pdfFiles" accept=".pdf" multiple>
+        
+        <div class="file-list" id="fileList"></div>
+        
+        <button class="merge-btn" id="mergeBtn" onclick="mergePDFs()" disabled>
+            PDFleri Birleştir
+        </button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div style="margin-top: 10px;">PDF'ler birleştiriliyor...</div>
+        </div>
+        
+        <div class="success-message" id="successMessage">
+            ✅ PDF'ler başarıyla birleştirildi ve indirildi!
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+
+        // File input handler
+        document.getElementById('pdfFiles').addEventListener('change', function(e) {
+            handleFiles(e.target.files);
+        });
+
+        // Drag and drop handlers
+        const uploadArea = document.querySelector('.upload-area');
+        
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        function handleFiles(files) {
+            // Clear previous selections
+            selectedFiles = [];
+            
+            // Filter PDF files and limit to 2
+            for (let i = 0; i < Math.min(files.length, 2); i++) {
+                if (files[i].type === 'application/pdf') {
+                    selectedFiles.push(files[i]);
+                }
+            }
+            
+            displayFileList();
+            updateMergeButton();
+        }
+
+        function displayFileList() {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span class="file-name">${file.name}</span>
+                    <button class="remove-btn" onclick="removeFile(${index})">×</button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            displayFileList();
+            updateMergeButton();
+        }
+
+        function updateMergeButton() {
+            const mergeBtn = document.getElementById('mergeBtn');
+            mergeBtn.disabled = selectedFiles.length !== 2;
+        }
+
+        async function mergePDFs() {
+            if (selectedFiles.length !== 2) {
+                showError('Lütfen tam olarak 2 PDF dosyası seçin.');
+                return;
+            }
+
+            showLoading(true);
+            hideMessages();
+
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.create();
+
+                for (let file of selectedFiles) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
+                    const copiedPages = await pdfDoc.copyPages(pdf, pdf.getPageIndices());
+                    copiedPages.forEach((page) => pdfDoc.addPage(page));
+                }
+
+                const pdfBytes = await pdfDoc.save();
+                
+                // Create download link
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'birlestirilmis_pdf.pdf';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                showSuccess();
+            } catch (error) {
+                console.error('PDF birleştirme hatası:', error);
+                showError('PDF\'ler birleştirilirken bir hata oluştu. Lütfen geçerli PDF dosyaları seçtiğinizden emin olun.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('mergeBtn').disabled = show || selectedFiles.length !== 2;
+        }
+
+        function showSuccess() {
+            document.getElementById('successMessage').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('successMessage').style.display = 'none';
+            }, 5000);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function hideMessages() {
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
